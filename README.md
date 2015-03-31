@@ -4,7 +4,7 @@ Simple 9patch library for LÖVE
 
 # Usage
 
-```
+```lua
 local patchy = require "patchy"
 
 function love.load()

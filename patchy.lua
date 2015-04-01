@@ -196,6 +196,7 @@ local function process(patch)
 	local _w, _h = patch.image:getDimensions()
 
 	local state = {
+		type       = "9patch",
 		image      = image,
 		pad        = patch.pad,
 		scale_x    = patch.scale_x,
@@ -223,9 +224,11 @@ local function process(patch)
 	return state
 end
 
-function nine.load(path)
+function nine.load(img)
 	-- *.9.png
-	local img  = love.graphics.newImage(path)
+	if type(img) == "string" then
+		img  = love.graphics.newImage(img)
+	end
 	local data = img:getData()
 	local w, h = img:getDimensions()
 

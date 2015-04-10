@@ -15,6 +15,7 @@ end
 function love.draw()
 	-- draw button, store returned content box (defined by 9patch padding)
 	-- you can also access the content box by calling button:get_content_box()
+	love.graphics.setColor(255, 255, 255, 255)
 	local cx, cy, cw, ch = button:draw(50, 50, 150, 50)
 
 	-- ...and draw some text over it, or whatever else you might want to do!

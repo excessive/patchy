@@ -1,5 +1,5 @@
 local nine = {
-	_VERSION     = 'patchy.lua v1.0.0',
+	_VERSION     = 'patchy.lua v1.1.0',
 	_DESCRIPTION = 'Simple 9patch library for LÖVE',
 	_URL         = 'https://github.com/excessive/patchy/tree/master/patchy.lua',
 	_LICENSE     = [[
@@ -34,6 +34,7 @@ local function vertical(state, x, w, sx, row, first)
 
 		if w and w > 0 and h and h > 0 then
 			area.quad = love.graphics.newQuad(x, y, w, h, state.dimensions.w, state.dimensions.h)
+			area.id   = state.batch:add(area.quad)
 		end
 
 		area.x   = x   -- start x
@@ -169,10 +170,12 @@ local function draw(p, x, y, w, h)
 			pay = y
 		end
 
-		if p.areas[i].quad then
-			love.graphics.draw(p.image, p.areas[i].quad, pax, pay, 0, p.areas[i].sx and sax or 1, p.areas[i].sy and say or 1)
+		if p.areas[i].id then
+			p.batch:set(p.areas[i].id, p.areas[i].quad, pax, pay, 0, p.areas[i].sx and sax or 1, p.areas[i].sy and say or 1)
 		end
 	end
+
+	love.graphics.draw(p.batch)
 
 	if debug_draw then
 		love.graphics.setColor(255, 0, 0, 255)
@@ -198,6 +201,7 @@ local function process(patch)
 	local state = {
 		type       = "9patch",
 		image      = image,
+		batch      = patch.batch,
 		pad        = patch.pad,
 		scale_x    = patch.scale_x,
 		scale_y    = patch.scale_y,
@@ -355,12 +359,14 @@ function nine.load(img)
 	asset:paste(data, 0, 0, 1, 1, w, h)
 
 	local srgb = select(3, love.window.getMode()).srgb
+	local image = love.graphics.newImage(asset, srgb and "srgb" or nil)
 
 	-- Dear Positive,
 	-- ??????????????????????????
 	-- Sincerely, me.
 	local patch = {
-		image   = love.graphics.newImage(asset, srgb and "srgb" or nil),
+		image   = image,
+		batch   = love.graphics.newSpriteBatch(image, 25),
 		pad     = pad,
 		scale_x = scale_x,
 		scale_y = scale_y,

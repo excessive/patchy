@@ -136,37 +136,64 @@ local function horizontal(state)
 	end
 end
 
--- Content Box (full - padding)
-local function get_content_box(p, x, y, w, h)
-	return x - p.pad[4], y - p.pad[1], w + p.pad[2] + p.pad[4] + p.static.x, h + p.pad[1] + p.pad[3] + p.static.y
+-- Content Box (border - padding)
+local function get_content_box(p, x, y, w, h, preprocessed)
+	if not preprocessed then
+		x, y = (x or 0), (y or 0)
+		w = math.max((w or 0) - p.static.x, 0) + p.static.x
+		h = math.max((h or 0) - p.static.y, 0) + p.static.y
+	end
+
+	return x + p.pad[4], y + p.pad[1], w - p.pad[2] - p.pad[4] + p.static.x, h - p.pad[1] - p.pad[3] + p.static.y
+end
+-- Border Box (content + padding)
+local function get_border_box(p, x, y, w, h, preprocessed)
+	if not preprocessed then
+		x, y = (x or 0), (y or 0)
+		w, h = (w or 0), (h or 0)
+	end
+
+	x, y, w, h = x - p.pad[4], y - p.pad[1], w + p.pad[2] + p.pad[4], h + p.pad[1] + p.pad[3]
+
+	if not preprocessed then
+		w = math.max(w - p.static.x, 0) + p.static.x
+		h = math.max(h - p.static.y, 0) + p.static.x
+	end
+	return x, y, w, h
 end
 
-local function draw(p, x, y, w, h)
+local function draw(p, x, y, w, h, content_box)
 	local skip_update = false
 
 	-- If all args match previous draw, no need to update the batch.
 	if p.last_args then
-		local ox, oy, ow, oh = unpack(p.last_args)
-		if x == ox and y == oy and w == ow and h == oh then
+		local ox, oy, ow, oh, ocontent_box = unpack(p.last_args)
+		if x == ox and y == oy and w == ow and h == oh and content_box == ocontent_box then
 			skip_update = true
 		else
 			p.last_args[1] = x
 			p.last_args[2] = y
 			p.last_args[3] = w
 			p.last_args[4] = h
+			p.last_args[5] = content_box
 		end
 	else
-		p.last_args = { x, y, w, h }
+		p.last_args = { x, y, w, h, content_box }
 	end
 
 	-- Box Size
-	x = (x or 0)
-	y = (y or 0)
-	w = math.max((w or 0) - p.static.x, 0)
-	h = math.max((h or 0) - p.static.y, 0)
+	x, y = (x or 0), (y or 0)
+	w, h = (w or 0), (h or 0)
+
+	if content_box then -- Content box model
+		x, y, w, h = get_border_box(p, x, y, w, h, true)
+	end
+
+	w = math.max(w - p.static.x, 0)
+	h = math.max(h - p.static.y, 0)
 
 	-- Content Box
-	local cx, cy, cw, ch = get_content_box(p, x, y, w, h)
+	local cx, cy, cw, ch = get_content_box(p, x, y, w, h, true)
 
 	if not skip_update then
 		-- Divide size by scale area
@@ -198,7 +225,7 @@ local function draw(p, x, y, w, h)
 
 	if debug_draw then
 		love.graphics.setColor(255, 0, 0, 255)
-		love.graphics.rectangle("line", x, y, w, h)
+		love.graphics.rectangle("line", get_border_box(p, cx, cy, cw, ch)) --Fixes debug_draw drawing the box littler than how it was
 		love.graphics.setColor(0, 255, 0, 255)
 		love.graphics.rectangle("line", cx, cy, cw, ch)
 		love.graphics.setColor(255, 255, 255, 255)
@@ -228,6 +255,7 @@ local function process(patch)
 		static     = {x = 0, y = 0},
 		dimensions = {w = _w, h = _h},
 		draw       = draw,
+		get_border_box  = get_border_box,
 		get_content_box = get_content_box
 	}
 
@@ -366,10 +394,10 @@ function nine.load(img)
 	fill_y.y = fill_y.y and fill_y.y or scale_y[1].y
 
 	local pad = {
-		fill_y.y - scale_y[1].y,
-		(scale_x[1].x + scale_w) - (fill_x.x + fill_x.w),
-		(scale_y[1].y + scale_h) - (fill_y.y + fill_y.h),
-		fill_x.x - scale_x[1].x,
+		- fill_y.y + scale_y[1].y,
+		- (scale_x[1].x + scale_w) + (fill_x.x + fill_x.w),
+		- (scale_y[1].y + scale_h) + (fill_y.y + fill_y.h),
+		- fill_x.x + scale_x[1].x,
 	}
 
 	local w, h  = img:getWidth()-2, img:getHeight()-2

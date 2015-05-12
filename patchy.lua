@@ -1,5 +1,5 @@
 local nine = {
-	_VERSION     = 'patchy.lua v1.2.0',
+	_VERSION     = 'patchy.lua v2.0.0',
 	_DESCRIPTION = 'Simple 9patch library for LÖVE',
 	_URL         = 'https://github.com/excessive/patchy/tree/master/patchy.lua',
 	_LICENSE     = [[

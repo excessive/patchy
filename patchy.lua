@@ -29,22 +29,16 @@ local nine = {
 
 local function vertical(state, x, w, sx, row, first)
 	local function add(state, x, y, w, h, sx, sy, row, col)
-		state.areas[#state.areas + 1] = {}
-		local area = state.areas[#state.areas]
-
-		if w and w > 0 and h and h > 0 then
-			area.quad = love.graphics.newQuad(x, y, w, h, state.dimensions.w, state.dimensions.h)
-			area.id   = state.batch:add(area.quad)
-		end
-
-		area.x   = x   -- start x
-		area.y   = y   -- start y
-		area.w   = w   -- end x
-		area.h   = h   -- end y
-		area.sx  = sx  -- scale on x (bool)
-		area.sy  = sy  -- scale on y (bool)
-		area.row = row -- row number
-		area.col = col -- col number
+		state.areas[#state.areas + 1] = {
+			x   = x,   -- start x
+			y   = y,   -- start y
+			w   = w,   -- end x
+			h   = h,   -- end y
+			sx  = sx,  -- scale on x (bool)
+			sy  = sy,  -- scale on y (bool)
+			row = row, -- row number
+			col = col, -- col number
+		}
 	end
 
 	local scale_y        = state.scale_y
@@ -235,6 +229,79 @@ local function draw(p, x, y, w, h, content_box)
 	return cx, cy, cw, ch
 end
 
+local function dump (state, filename, save_image)
+	--Dumb serialization
+	local str = [[local metadata = function ()
+	return {
+		type = "9patch",
+		areas = {]]
+
+	for _, area in ipairs(state.areas) do
+		str = str..[[
+
+			{
+				x   =	]]..tostring(area.x)..[[,
+				y   =	]]..tostring(area.y)..[[,
+				w   =	]]..tostring(area.w)..[[,
+				h   =	]]..tostring(area.h)..[[,
+				sx  =	]]..tostring(area.sx)..[[,
+				sy  =	]]..tostring(area.sy)..[[,
+				row =	]]..tostring(area.row)..[[,
+				col =	]]..tostring(area.col)..[[,
+			},]]
+	end
+
+	str = str:sub(1, -2) .. [[
+
+		},
+		dimensions = {w = ]] .. tostring(state.dimensions.w) .. ", h = ".. tostring(state.dimensions.h) .. [[},
+		dynamic = {x = ]] .. tostring(state.dynamic.x) .. ", y = " .. tostring(state.dynamic.y) .. [[},
+		static = {x = ]] .. tostring(state.static.x) .. ", y = ".. tostring(state.static.y) .. [[},
+		pad = {]]
+
+		for _, padding in ipairs(state.pad) do
+			str = str .. tostring(padding) .. ","
+		end
+
+		str = str:sub(1, -2) .. [[}
+	}
+end
+
+return metadata]]
+
+	--Save the data in a file
+	love.filesystem.write(filename or "", str or "")
+
+	--Also save the image if required
+	if save_image then
+		local filename = (filename:match("(.-)%..-$") or "image")..".png" --Maybe this should be ".9.png" ?
+		local data = state.image:getData()
+		data:encode(filename)
+	end
+
+	return str
+end
+
+local function postprocess(state)
+	if #state.areas < 1 then
+		error("There are no areas in this patch", 2)
+	else
+		for _, area in ipairs(state.areas) do
+			if area.w and area.w > 0 and area.h and area.h > 0 then
+				area.quad = love.graphics.newQuad(area.x, area.y, area.w, area.h, state.dimensions.w, state.dimensions.h)
+				area.id   = state.batch:add(area.quad)
+			end
+		end
+	end
+
+	state.draw				= draw
+	state.get_border_box	= get_border_box
+	state.get_content_box	= get_content_box
+	state.dump				= dump
+
+	return state
+end
+
 local function process(patch)
 	local image = patch.image
 
@@ -242,7 +309,7 @@ local function process(patch)
 		error("No images for this patch", 2)
 	end
 
-	local _w, _h = patch.image:getDimensions()
+	local _w, _h = image:getDimensions()
 
 	local state = {
 		type       = "9patch",
@@ -254,16 +321,9 @@ local function process(patch)
 		areas      = {},
 		static     = {x = 0, y = 0},
 		dimensions = {w = _w, h = _h},
-		draw       = draw,
-		get_border_box  = get_border_box,
-		get_content_box = get_content_box
 	}
 
 	horizontal(state)
-
-	if #state.areas < 1 then
-		error("There are no areas in this patch", 2)
-	end
 
 	state.dynamic = {
 		x = state.dimensions.w - state.static.x,
@@ -272,16 +332,40 @@ local function process(patch)
 
 	state.scale_x, state.scale_y = nil, nil
 
-	return state
+	return postprocess(state)
 end
 
-function nine.load(img)
+function nine.load(img, metadata)
 	-- *.9.png
 	if type(img) == "string" then
 		img  = love.graphics.newImage(img)
 	end
+	
 	local data = img:getData()
 	local w, h = img:getDimensions()
+
+	local aw, ah  = img:getWidth()-2, img:getHeight()-2
+	local asset = love.image.newImageData(aw, ah)
+
+	asset:paste(data, 0, 0, 1, 1, aw, ah)
+
+	local srgb = select(3, love.window.getMode()).srgb
+	local image = love.graphics.newImage(asset, srgb and "srgb" or nil)
+
+	if type(metadata) == "string" then
+		metadata = love.filesystem.load(metadata)
+		if not metadata then error("Invalid metadata file passed to 'import'",2) end
+		metadata = metadata()
+	end
+
+	if type(metadata) == "function" then
+		metadata = metadata()
+	end
+
+	if metadata and metadata.type == "9patch" then
+		metadata.image = image
+		return nine.import(image, metadata)
+	end
 
 	-- 9patch data
 	local scale_x, scale_y = {{}}, {{}}
@@ -400,26 +484,47 @@ function nine.load(img)
 		- fill_x.x + scale_x[1].x,
 	}
 
-	local w, h  = img:getWidth()-2, img:getHeight()-2
-	local asset = love.image.newImageData(w, h)
-
-	asset:paste(data, 0, 0, 1, 1, w, h)
-
-	local srgb = select(3, love.window.getMode()).srgb
-	local image = love.graphics.newImage(asset, srgb and "srgb" or nil)
-
 	-- Dear Positive,
 	-- ??????????????????????????
 	-- Sincerely, me.
 	local patch = {
 		image   = image,
-		batch   = love.graphics.newSpriteBatch(image, 25),
+		batch   = love.graphics.newSpriteBatch(image, (#scale_x * 2 + 1) * (#scale_y * 2 + 1)), 
 		pad     = pad,
 		scale_x = scale_x,
 		scale_y = scale_y,
 	}
 
 	return process(patch)
+end
+
+function nine.import (image, metadata)
+	if type(metadata) == "string" then
+		metadata = love.filesystem.load(metadata)
+		if not metadata then error("Invalid metadata file passed to 'import'",2) end
+		metadata = metadata()
+	end
+
+	if type(metadata) == "function" then
+		metadata = metadata()
+	end
+
+	if type(metadata) ~= "table" then
+		error("bad argument #2 to 'import' (table expected, got "..type(metadata)..")", 2)
+	end
+	-- *.9.png
+	if type(image) == "string" then
+		image  = love.graphics.newImage(image)
+	end
+
+	if not image or not image.type or image:type() ~= "Image" then
+		error("bad argument #1 to 'import' (Image expected, got "..(image.type and image:type() or type(image))..")", 2)
+	end
+
+	metadata.image = image
+
+	metadata.batch = love.graphics.newSpriteBatch(image, #metadata.areas)
+	return postprocess(metadata)
 end
 
 return nine

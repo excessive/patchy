@@ -11,17 +11,30 @@ local str = "You think water moves fast? You should see ice. It moves " ..
             "killed the other two, but it wasn't. Nature is lethal but it " ..
             "doesn't hold a candle to man."
 
+local size = 250  
+local speed = 30          
+
 function love.load()
 	window = patchy.load("window.9.png")
 	button = patchy.load("button.9.png")
 	love.graphics.setFont(love.graphics.newFont(14))
 end
 
+function love.update(dt)
+	if size >= 500 then 
+		speed = -speed
+	elseif size <= 250 then
+		speed = -speed
+	end
+
+	size = size + speed*dt
+end
+
 function love.draw()
 	love.graphics.setColor(love.math.gammaToLinear(255, 255, 255, 255))
 
 	-- draw a window full of text
-	local cx, cy, cw, ch = window:draw(50, 50, 250, 250)
+	local cx, cy, cw, ch = window:draw(50, 50, size, size)
 	love.graphics.setScissor(cx, cy, cw, ch)
 	love.graphics.printf(str, cx, cy, cw, "justify")
 	love.graphics.setScissor()

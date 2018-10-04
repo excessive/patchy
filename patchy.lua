@@ -340,8 +340,7 @@ function nine.load(img, metadata)
 	if type(img) == "string" then
 		img  = love.graphics.newImage(img)
 	end
-	
-	local data = img:getData()
+	local data = img
 	local w, h = img:getDimensions()
 
 	local aw, ah  = img:getWidth()-2, img:getHeight()-2

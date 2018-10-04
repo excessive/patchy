@@ -218,11 +218,11 @@ local function draw(p, x, y, w, h, content_box)
 	love.graphics.draw(p.batch)
 
 	if debug_draw then
-		love.graphics.setColor(255, 0, 0, 255)
+		love.graphics.setColor(1, 0, 0, 1)
 		love.graphics.rectangle("line", get_border_box(p, cx, cy, cw, ch)) --Fixes debug_draw drawing the box littler than how it was
-		love.graphics.setColor(0, 255, 0, 255)
+		love.graphics.setColor(0, 1, 0, 1)
 		love.graphics.rectangle("line", cx, cy, cw, ch)
-		love.graphics.setColor(255, 255, 255, 255)
+		love.graphics.setColor(1, 1, 1, 1)
 	end
 
 	-- return content box for lazy people who don't want to call get_content_box again
@@ -340,8 +340,7 @@ function nine.load(img, metadata)
 	if type(img) == "string" then
 		img  = love.graphics.newImage(img)
 	end
-	
-	local data = img:getData()
+	local data = img
 	local w, h = img:getDimensions()
 
 	local aw, ah  = img:getWidth()-2, img:getHeight()-2
@@ -378,12 +377,12 @@ function nine.load(img, metadata)
 
 		-- If we are currently in a scale stream, check to see if we leave it (not black)
 		if scale_x[#scale_x].x then
-			if not scale_x[#scale_x].w and (r ~= 0 or g ~=0 or b ~= 0 or a ~= 255) then
+			if not scale_x[#scale_x].w and (r ~= 0 or g ~=0 or b ~= 0 or a ~= 1) then
 				scale_x[#scale_x].w = (i - 1) - scale_x[#scale_x].x
 			end
 		else
 			-- If we are not in a scale stream, check to see if we are starting one (black)
-			if r == 0 and g == 0 and b == 0 and a == 255 then
+			if r == 0 and g == 0 and b == 0 and a == 1 then
 				scale_x[#scale_x].x = i - 1
 			end
 		end
@@ -393,12 +392,12 @@ function nine.load(img, metadata)
 
 		-- If we are in a fill stream, check to see if we leave it (not black)
 		if fill_x.x then
-			if not fill_x.w and (r ~= 0 or g ~= 0 or b ~= 0 or a ~= 255) then
+			if not fill_x.w and (r ~= 0 or g ~= 0 or b ~= 0 or a ~= 1) then
 				fill_x.w = (i - 1) - fill_x.x
 			end
 		else
 			-- If we are not in a fill stream, check to see if we are starting one (black)
-			if r == 0 and g == 0 and b == 0 and a == 255 then
+			if r == 0 and g == 0 and b == 0 and a == 1 then
 				fill_x.x = i - 1
 			end
 		end
@@ -429,11 +428,11 @@ function nine.load(img, metadata)
 		local r, g, b, a = data:getPixel(0, i)
 
 		if scale_y[#scale_y].y then
-			if not scale_y.h and (r ~= 0 or g ~=0 or b ~= 0 or a ~= 255) then
+			if not scale_y.h and (r ~= 0 or g ~=0 or b ~= 0 or a ~= 1) then
 				scale_y[#scale_y].h = (i - 1) - scale_y[#scale_y].y
 			end
 		else
-			if r == 0 and g == 0 and b == 0 and a == 255 then
+			if r == 0 and g == 0 and b == 0 and a == 1 then
 				scale_y[#scale_y].y = i - 1
 			end
 		end
@@ -441,11 +440,11 @@ function nine.load(img, metadata)
 		local r, g, b, a = data:getPixel(w - 1, i)
 
 		if fill_y.y then
-			if not fill_y.h and (r ~= 0 or g ~= 0 or b ~= 0 or a ~= 255) then
+			if not fill_y.h and (r ~= 0 or g ~= 0 or b ~= 0 or a ~= 1) then
 				fill_y.h = (i - 1) - fill_y.y
 			end
 		else
-			if r == 0 and g == 0 and b == 0 and a == 255 then
+			if r == 0 and g == 0 and b == 0 and a == 1 then
 				fill_y.y = i - 1
 			end
 		end

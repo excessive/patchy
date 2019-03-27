@@ -42,5 +42,5 @@ function love.draw()
 	-- draw a button inside the window's content box
 	cx, cy, cw, ch = button:draw(cx, cy + ch - 30, cw, 30)
 	love.graphics.setColor(0, 0, 0, 255)
-	love.graphics.printf("Hello World", cx, cy + 6, cw, "center")
+	love.graphics.printf("Hello World", cx, cy + 6, math.floor(cw), "center")
 end

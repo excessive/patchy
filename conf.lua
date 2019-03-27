@@ -1,6 +1,6 @@
 function love.conf(t)
 	t.identity              = nil
-	t.version               = "0.9.2"
+	t.version               = "11.0"
 	t.console               = false
 
 	t.window.title          = "9patch thingy"
